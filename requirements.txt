@@ -1,0 +1,9 @@
+PyQt5>=5.15
+pyqt-fluent-widgets>=1.8
+numpy>=1.21
+matplotlib>=3.5
+sounddevice>=0.4.6
+soundfile>=0.12
+pyroomacoustics>=0.7
+nara_wpe>=0.0.9
+

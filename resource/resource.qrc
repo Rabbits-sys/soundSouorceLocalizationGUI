@@ -1,0 +1,11 @@
+<RCC>
+  <qresource>
+    <file>images/logo.ico</file>
+    <file>images/todo.png</file>
+    <file>images/speaker.png</file>
+    <file>images/sample.png</file>
+    <file>images/monitor.png</file>
+    <file>images/dataset.png</file>
+    <file>music/test.wav</file>
+  </qresource>
+</RCC>
