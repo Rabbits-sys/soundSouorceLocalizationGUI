@@ -1,6 +1,6 @@
-# sslGui 项目说明
+# soundSourceLocalizationGUI 项目说明
 
-本项目是一个基于 PyQt5 和 qfluentwidgets 的语音实验 GUI，集成了硬件采集（HKUSB6203）、多 USB 扬声器播放、在线/离线声源定位（GCC-PHAT）与批量实验数据采集。
+本项目是一个基于 PyQt5 的语音实验 GUI，集成了硬件采集（HKUSB6203）、多 USB 扬声器播放、在线/离线声源定位（GCC-PHAT）与批量实验数据采集。
 
 - 界面层（view/）：硬件设置、数据集设置、批量实验、在线/离线实验页面
 - 设备层（driver/）：HK 采集卡、USB 扬声器与 CMU ARCTIC 数据集封装
@@ -13,23 +13,27 @@
 
 ```
 sslGui/
-  demo.py                 # 应用入口与主窗口
-  thread_manager.py       # 通用线程封装（FunctionWorker/FunctionLoopWorker）
-  resource_rc.py          # 资源文件（由 Qt 工具生成）
-  config.ini              # 参数配置（首次运行自动生成）
-  driver/                 # 设备抽象与驱动封装
-    dataset_driver.py     # CMU ARCTIC 数据集封装
-    hkusb_driver.py       # HKUSB6203 采集卡驱动封装
-    speaker_driver.py     # USB 扬声器管理与播放
-  method/
-    gcc_phat.py           # GCC-PHAT 单声源定位实现
-  task/
-    batch_task.py         # 批量实验任务
-    online_task.py        # 在线定位任务
-    offline_task.py       # 离线定位任务
-  view/
-    *.py                  # 各子界面（含 Ui_*.py 自动生成文件）
-  resource/               # 资源（图片、音乐、ui、qrc）
+│
+├─ demo.py                 # 应用入口与主窗口
+├─ thread_manager.py       # 通用线程封装（FunctionWorker/FunctionLoopWorker）
+├─ resource_rc.py          # 资源文件（由 Qt 工具生成）
+├─ config.ini              # 参数配置（首次运行自动生成）
+│  
+├─ driver/                 # 设备抽象与驱动封装
+│  ├─ dataset_driver.py    # CMU ARCTIC 数据集封装
+│  └─ hkusb_driver.py      # HKUSB6203 采集卡驱动封装
+│  ├─ speaker_driver.py    # USB 扬声器管理与播放
+│  
+├─ method/
+│  └─ gcc_phat.py          # GCC-PHAT 单声源定位实现
+│  
+├─ task/
+│  ├─ batch_task.py        # 批量实验任务
+│  ├─ online_task.py       # 在线定位任务
+│  └─ offline_task.py      # 离线定位任务
+├─ view/
+│  └─ *.py                 # 各子界面（含 Ui_*.py 自动生成文件）
+└─ resource/               # 资源（图片、音乐、ui、qrc）
 ```
 
 > 说明：`view/Ui_*.py` 与 `resource_rc.py` 为自动生成文件，建议不要手动修改；若使用 Qt Designer 重新导出，会覆盖改动。
@@ -93,12 +97,11 @@ python demo.py
 
 ## 代码注释说明
 
-- 本次已为核心 Python 文件补充模块/类/方法级文档字符串，遵循 PEP 257 规范；
+- 本次已为核心 Python 文件补充模块/类/方法级文档注释，遵循 NumPy 风格；
 - 自动生成文件（`view/Ui_*.py`、`resource_rc.py`）保留其生成注释，避免与再次生成冲突。
 
 ## 开发提示
 
 - 若修改 UI（.ui）文件，请使用 `pyuic5` 重新生成对应 `Ui_*.py`，并重新构建 `resource_rc.py`；
 - 建议不要在自动生成文件中编写业务逻辑，保持 `view/*.py` 为自定义界面逻辑层。
-
 
