@@ -1,6 +1,6 @@
 # soundSourceLocalizationGUI 项目说明
 
-本项目是一个基于 PyQt5 的语音实验 GUI，集成了硬件采集（HKUSB6203）、多 USB 扬声器播放、在线/离线声源定位（GCC-PHAT）与批量实验数据采集。
+本项目是一个基于 PyQt5 和 qfluentwidgets 的语音实验 GUI，集成了硬件采集（HKUSB6203）、多 USB 扬声器播放、在线/离线声源定位（GCC-PHAT）与批量实验数据采集。
 
 - 界面层（view/）：硬件设置、数据集设置、批量实验、在线/离线实验页面
 - 设备层（driver/）：HK 采集卡、USB 扬声器与 CMU ARCTIC 数据集封装
@@ -12,7 +12,7 @@
 ## 目录结构
 
 ```
-sslGui/
+soundSouorceLocalizationGUI/
 │
 ├─ demo.py                 # 应用入口与主窗口
 ├─ thread_manager.py       # 通用线程封装（FunctionWorker/FunctionLoopWorker）
