@@ -21,8 +21,8 @@ soundSouorceLocalizationGUI/
 │  
 ├─ driver/                 # 设备抽象与驱动封装
 │  ├─ dataset_driver.py    # CMU ARCTIC 数据集封装
-│  └─ hkusb_driver.py      # HKUSB6203 采集卡驱动封装
-│  ├─ speaker_driver.py    # USB 扬声器管理与播放
+│  ├─ hkusb_driver.py      # HKUSB6203 采集卡驱动封装
+│  └─ speaker_driver.py    # USB 扬声器管理与播放
 │  
 ├─ method/
 │  └─ gcc_phat.py          # GCC-PHAT 单声源定位实现
