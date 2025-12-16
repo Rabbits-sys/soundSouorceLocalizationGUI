@@ -35,33 +35,7 @@ epsilon = 1e-8
 class GccPhat(object):
     """
     GCC-PHAT 定位器。
-
-    Parameters
-    ----------
-    filterLen : int, default=5
-        在线模式下中值滤波窗口长度（帧数）。
-
-    Attributes
-    ----------
-    _filterLen : int
-        中值滤波窗口长度。
-    _recordingQueue : RecordingQueue4D
-        在线模式用于平滑时延估计的队列。
     """
-    def __init__(self, filterLen=5):
-        self._filterLen = filterLen
-        self._recordingQueue = RecordingQueue4D(self._filterLen)
-
-    def clearFilter(self):
-        """
-        清空在线中值滤波器的历史。
-
-        Returns
-        -------
-        None
-        """
-        self._recordingQueue.clear()
-
     def onlineProcessData(self, dataBuffer, sampleRate, sampleNum, cutoffFreqLow=80, cutoffFreqUp=8000):
         """
         在线处理一帧数据，返回长度为 1 的坐标列表。
@@ -92,14 +66,10 @@ class GccPhat(object):
                   (np.max(np.abs(signal), axis=1, keepdims=True) + epsilon))
 
         tau = self.onlineGccPhat(signal, sampleRate, sampleNum, cutoffFreqLow, cutoffFreqUp)
-        self._recordingQueue.pushData(tau)
-        if self._recordingQueue.isFull():
-            delayList = self._recordingQueue.getMedian() / sampleRate
+        delayList = tau.getMedian() / sampleRate
 
-            loc = self.locFromDelayList(delayList)
-            return [loc]
-        else:
-            return [np.array([0, 0, 0])]
+        loc = self.locFromDelayList(delayList)
+        return [loc]
 
     def offlineProcessData(self, dataFilePath, sampleNum=8192, cutoffFreqLow=80, cutoffFreqUp=8000):
         """
@@ -265,83 +235,3 @@ class GccPhat(object):
         peakLoc = np.argmax(np.abs(gccPhat), axis=2)
         tau = peakLoc - stftShift
         return tau.T
-
-
-class RecordingQueue4D:
-    """
-    在线中值滤波缓存队列。
-
-    Parameters
-    ----------
-    max_len : int
-        队列最大长度（帧数）。
-
-    Attributes
-    ----------
-    recQueue : np.ndarray of shape (4, max_len)
-        存储最近 ``max_len`` 帧的 4 维时延（整型样本偏移）。
-    queueLen : int
-        当前有效帧数。
-    queueTail : int
-        环形队尾索引。
-    """
-    def __init__(self, max_len: int):
-        # 预分配内存
-        self.maxLength: int = max_len
-        self.queueTail: int = - 1
-
-        self.recQueue = np.zeros((4, max_len), dtype=int)
-        self.queueLen = 0
-
-    def pushData(self, data: np.array):
-        """
-        追加一帧 4 维时延。
-
-        Parameters
-        ----------
-        data : np.ndarray of shape (4,)
-            单帧 4 维时延（样本偏移）。
-
-        Returns
-        -------
-        None
-        """
-        # 环形缓冲，维持固定长度
-        self.queueTail = (self.queueTail + 1) % self.maxLength
-        self.queueLen = min(self.queueLen + 1, self.maxLength)
-        self.recQueue[:, self.queueTail] = data
-
-    def getMedian(self):
-        """
-        返回逐维中值。
-
-        Returns
-        -------
-        np.ndarray of shape (4,)
-            中值时延（样本偏移）。
-        """
-        return np.median(self.recQueue, axis=1)
-
-    def isFull(self):
-        """
-        判断缓冲区是否已满。
-
-        Returns
-        -------
-        bool
-            ``True`` 表示队列已满。
-        """
-        return self.queueLen == self.maxLength
-
-    def clear(self):
-        """
-        清空历史记录。
-
-        Returns
-        -------
-        None
-        """
-        self.recQueue = np.zeros((4, self.maxLength), dtype=int)
-        self.queueLen = 0
-        self.queueTail = -1
-
