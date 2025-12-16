@@ -160,7 +160,7 @@ class OfflineTask(object):
         运行标志。
     """
     def __init__(self):
-        self._gccPhat = GccPhat(filterLen=5)
+        self._gccPhat = GccPhat()
 
         self.param = OfflineParam()
         self._dataHolder = None

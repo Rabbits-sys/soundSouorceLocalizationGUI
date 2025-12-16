@@ -187,7 +187,7 @@ class OnlineTask(object):
     """
     def __init__(self, hkDriver: HkDriver):
         self._hkDriver = hkDriver
-        self._gccPhat = GccPhat(filterLen=5)
+        self._gccPhat = GccPhat()
 
         self.param = OnlineParam()
 

@@ -211,3 +211,4 @@ record/
 output/
 config.ini
 Usb_Daq_V52_Dll.dll
+cond_report.xlsx
