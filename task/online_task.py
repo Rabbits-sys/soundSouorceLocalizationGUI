@@ -237,7 +237,7 @@ class OnlineTask(object):
             except:
                 break
 
-    def startOnlineTask(self, stepSignal: pyqtSignal(object)):
+    def startOnlineTask(self, stepSignal: pyqtSignal(object), micCoords):
         """
         启动在线任务的主循环（由 ``FunctionLoopWorker`` 在线程中调用）。
 
@@ -245,6 +245,8 @@ class OnlineTask(object):
         ----------
         stepSignal : pyqtSignal
             外层传入的 ``step`` 信号，用于上报中间定位结果。
+        micCoords : array-like of shape (5, 3)
+            麦克风三维坐标（单位：米）。
 
         Returns
         -------
@@ -264,7 +266,7 @@ class OnlineTask(object):
             sampleNum = self.param.getFrameLenList()[self.param.getFrameLenCode()]
             if self.param.getMethodCode() == 0:
                 method = self._gccPhat
-                method.clearFilter()
+                method.setMicCoords(micCoords)
 
             producerThread = threading.Thread(target=self.producerThreadFunction, args=(sampleNum, ))
 

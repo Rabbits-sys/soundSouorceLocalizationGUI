@@ -50,6 +50,7 @@ class OfflineInterface(Ui_OfflineInterface, QWidget):
 
         # 任务引用（由主窗口注入）
         self.offlineTask = None
+        self.arrayTask = None
         self.paramConfig: Optional[QSettings] = None
 
         self.setReloadButton.setIcon(FluentIcon.CANCEL)
@@ -80,7 +81,7 @@ class OfflineInterface(Ui_OfflineInterface, QWidget):
         self.setShadowEffect(self.resultCard)
         self.setShadowEffect(self.showCard)
 
-    def setOfflineTask(self, offlineTask):
+    def setOfflineTask(self, offlineTask, arrayTask):
         """
         设置离线任务引用。
 
@@ -88,8 +89,11 @@ class OfflineInterface(Ui_OfflineInterface, QWidget):
         ----------
         offlineTask : OfflineTask
             离线任务对象。
+        arrayTask : ArrayTask
+            阵列任务对象。
         """
         self.offlineTask = offlineTask
+        self.arrayTask = arrayTask
 
     def setParamConfig(self, paramConfig: QSettings):
         """
@@ -363,7 +367,7 @@ class OfflineInterface(Ui_OfflineInterface, QWidget):
 
             self.resultHorizontalSlider.setValue(0)
             # create a thread to test the sample card
-            self.offlineTaskWorker = FunctionWorker(self.offlineTask.startOfflineTask)
+            self.offlineTaskWorker = FunctionWorker(self.offlineTask.startOfflineTask, self.arrayTask.param.getMicCoords())
             self.offlineTaskWorker.signals.result.connect(self.offlineStartButtonThreadFinished)
             self.offlineTaskWorker.signals.error.connect(self.offlineStartButtonThreadError)
             self.offlineTaskWorker.start()

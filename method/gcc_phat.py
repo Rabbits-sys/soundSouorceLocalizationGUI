@@ -21,10 +21,7 @@ import numpy as np
 from nara_wpe.utils import stft
 
 
-# 麦克风与阵列参数
-microphoneNum = 5
-armLength = 0.32
-armRatio = 0.4
+
 # 声速参数（单位：m/s），简化温度修正
 t = 22
 c = 331.45 * np.sqrt(1 + t / 273.16)
@@ -36,6 +33,26 @@ class GccPhat(object):
     """
     GCC-PHAT 定位器。
     """
+    def __init__(self):
+        self.micCoords = None
+        self._subMatrixQ = None
+        self._subMatrixB = None
+
+    def setMicCoords(self, micCoords):
+        """
+        设置麦克风坐标。
+
+        Parameters
+        ----------
+        micCoords : array-like of shape (5, 3)
+            麦克风三维坐标（单位：米）。
+        """
+        self.micCoords = np.array(micCoords)
+        self._subMatrixQ = self.micCoords[1:, :] - self.micCoords[0, :]
+        micDists = np.sum(np.square(self.micCoords), axis=1)
+        self._subMatrixB = (micDists[1:] - micDists[0])[:, None]
+
+
     def onlineProcessData(self, dataBuffer, sampleRate, sampleNum, cutoffFreqLow=80, cutoffFreqUp=8000):
         """
         在线处理一帧数据，返回长度为 1 的坐标列表。
@@ -103,8 +120,7 @@ class GccPhat(object):
         loc = self.locFromDelayList(delayList)[None, ...]
         return loc
 
-    @staticmethod
-    def locFromDelayList(delayList):
+    def locFromDelayList(self, delayList):
         """
         根据 4 个相对时延估计 3D 坐标。
 
@@ -112,24 +128,27 @@ class GccPhat(object):
         ----------
         delayList : array-like of shape (4,)
             相对时延（单位：秒），对应固定麦克风对次序。
+        micloc : array-like of shape (5 ,3)
 
         Returns
         -------
         np.ndarray of shape (3,)
             估计的三维坐标（单位：米）。
         """
-        detValue = delayList[2] - armRatio * delayList[0] - armRatio * delayList[1] + epsilon
-        tildeT21 = armLength ** 2 - (c * delayList[0]) ** 2
-        tildeT31 = armLength ** 2 - (c * delayList[1]) ** 2
-        tildeT41 = 2 * (armRatio * armLength) ** 2 - (c * delayList[2]) ** 2
-        tildeT51 = armLength ** 2 - (c * delayList[3]) ** 2
-
-        tildeX = (delayList[2] - armRatio * delayList[1]) * tildeT21 + armRatio * delayList[0] * tildeT31 - delayList[0] * tildeT41
-        tildeY = (delayList[2] - armRatio * delayList[0]) * tildeT31 + armRatio * delayList[1] * tildeT21 - delayList[1] * tildeT41
-        tildeZ = 2 * armRatio * armLength ** 2 * delayList[3] * (1 - armRatio) + c ** 2 * delayList[3] * (
-                -armRatio * delayList[0] ** 2 - armRatio * delayList[1] ** 2 + delayList[2] ** 2) + detValue * tildeT51
-
-        return np.array([tildeX, tildeY, tildeZ]) / (2 * armLength * detValue)
+        # 获取时间帧数
+        delayList = np.array(delayList)[..., None].reshape((4, -1))
+        num_frame = delayList.shape[1]
+        # 构造每个时间帧对应的矩阵Q
+        matrixQ = np.zeros([delayList.shape[1], 4, 4])
+        matrixQ[:, :, :3] = self._subMatrixQ
+        matrixQ[:, :, 3] = c * delayList.T
+        # 构造每个时间帧对应的向量b
+        matrixB = 0.5 * (self._subMatrixB - np.square(c * delayList)).T[..., None]
+        try:
+            matrixU = np.linalg.solve(matrixQ, matrixB)
+            return matrixU[:, :3, 0].T
+        except np.linalg.LinAlgError:
+            return np.zeros((3, delayList.shape[1]))
 
     @staticmethod
     def onlineGccPhat(data, sampleRate, sampleNum, cutoffFreqLow, cutoffFreqUp):

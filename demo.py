@@ -141,11 +141,11 @@ class Window(SplitFluentWindow):
         self.arrayInterface.setArrayTask(self.arrayTask)
 
         # OnlineInterface
-        self.onlineInterface.setOnlineTask(self.onlineTask)
+        self.onlineInterface.setOnlineTask(self.onlineTask, self.arrayTask)
         self.onlineInterface.setDrivers(self.hkDriver, self.datasetDriver)
 
         # OfflineInterface
-        self.offlineInterface.setOfflineTask(self.offlineTask)
+        self.offlineInterface.setOfflineTask(self.offlineTask, self.arrayTask)
 
     def initNavigation(self):
         # add sub interface

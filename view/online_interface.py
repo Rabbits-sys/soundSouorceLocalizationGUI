@@ -55,6 +55,7 @@ class OnlineInterface(Ui_OnlineInterface, QWidget):
 
         # 任务和驱动引用（由主窗口注入）
         self.onlineTask = None
+        self.arrayTask = None
         self.hkDriver = None
         self.datasetDriver = None
         self.paramConfig: Optional[QSettings] = None
@@ -80,7 +81,7 @@ class OnlineInterface(Ui_OnlineInterface, QWidget):
         self.setShadowEffect(self.stateCard)
         self.setShadowEffect(self.showCard)
 
-    def setOnlineTask(self, onlineTask):
+    def setOnlineTask(self, onlineTask, arrayTask):
         """
         设置在线任务引用。
 
@@ -88,8 +89,11 @@ class OnlineInterface(Ui_OnlineInterface, QWidget):
         ----------
         onlineTask : OnlineTask
             在线任务对象。
+        arrayTask : ArrayTask
+            阵列任务对象。
         """
         self.onlineTask = onlineTask
+        self.arrayTask = arrayTask
 
     def setDrivers(self, hkDriver, datasetDriver):
         """
@@ -374,7 +378,7 @@ class OnlineInterface(Ui_OnlineInterface, QWidget):
                     self.setStartButton.setEnabled(True)
                     # create a thread to test the sample card
 
-                    self.onlineTaskWorker = FunctionLoopWorker(self.onlineTask.startOnlineTask)
+                    self.onlineTaskWorker = FunctionLoopWorker(self.onlineTask.startOnlineTask, self.arrayTask.param.getMicCoords())
                     self.onlineTaskWorker.signals.result.connect(self.onlineStartButtonThreadFinished)
                     self.onlineTaskWorker.signals.error.connect(self.onlineStartButtonThreadError)
                     self.onlineTaskWorker.signals.step.connect(self.drawOnlineStep)

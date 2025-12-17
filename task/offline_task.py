@@ -200,14 +200,13 @@ class OfflineTask(object):
         """
         return self._dataLen
 
-    def startOfflineTask(self, dataFilePath = None):
+    def startOfflineTask(self, micCoords):
         """
         执行离线定位任务。
 
         Parameters
         ----------
-        dataFilePath : str | None, optional
-            保留参数，当前未使用（以 ``param`` 中的路径为准）。
+        micCoords : array-like of shape (5, 3) | None, default=None
 
         Returns
         -------
@@ -219,6 +218,7 @@ class OfflineTask(object):
         self._startFlag = True
         if self.param.getMethodCode() == 0:
             method = self._gccPhat
+            method.setMicCoords(micCoords)
 
         if self._startFlag and self.param.getDataFilePath() and method:
             result = method.offlineProcessData(self.param.getDataFilePath())
