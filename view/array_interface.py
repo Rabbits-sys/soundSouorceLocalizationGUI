@@ -14,7 +14,6 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget, QGraphicsDropShadowEffect, QHeaderView, QTableWidgetItem, QAbstractItemView, QFileDialog, QVBoxLayout, QFrame
 from qfluentwidgets import FluentIcon, InfoBar, InfoBarPosition
 
-import os
 import numpy as np
 
 from view.Ui_ArrayInterface import Ui_ArrayInterface
