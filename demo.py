@@ -184,6 +184,7 @@ class Window(SplitFluentWindow):
             # init the paramConfig
             self.hkDriver.param.resetParamOfConfig(self.paramConfig)
             self.batchTask.param.resetParamOfConfig(self.paramConfig)
+            self.arrayTask.param.resetParamOfConfig(self.paramConfig)
             self.onlineTask.param.resetParamOfConfig(self.paramConfig)
             self.offlineTask.param.resetParamOfConfig(self.paramConfig)
         else:

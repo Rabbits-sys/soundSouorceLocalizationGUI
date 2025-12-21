@@ -103,6 +103,7 @@ class DatasetInterface(Ui_DatasetInterface, QWidget):
         self.signalCheckBox_2.clicked.connect(self.datasetSignalCheckBox2Changed)
         self.signalCheckBox_3.clicked.connect(self.datasetSignalCheckBox3Changed)
         self.signalCheckBox_4.clicked.connect(self.datasetSignalCheckBox4Changed)
+        self.signalComboBox.currentIndexChanged.connect(self.datasetSignalComboBoxChanged)
 
         # playCard 相关
         self.playSpinBox.valueChanged.connect(self.datasetPlaySpinBoxChanged)
@@ -112,7 +113,12 @@ class DatasetInterface(Ui_DatasetInterface, QWidget):
         """
         初始化数据集相关下拉框。
         """
-        self.signalComboBox.addItems(['扬声器-说话人对应(不同说话人不同语料)'])
+        self.signalComboBox.addItems([
+            '扬声器-不同说话人不同语料',
+            '扬声器-不同说话人相同语料',
+            '扬声器-相同说话人不同语料',
+            '扬声器-相同说话人相同语料'
+        ])
         self.signalComboBox.setCurrentIndex(0)
 
     def displayValueDataset(self):
@@ -127,13 +133,10 @@ class DatasetInterface(Ui_DatasetInterface, QWidget):
         self.signalCheckBox_4.setChecked(3 in usedSpeakerIndexList)
 
         speakerTextIndex = self.playSpinBox.value()
-        playTextBrowserMarkdown = ""
-        usedSpeakerIndexList = self.datasetDriver.getUsedSpeakerIndexList()
-        speakerTextList = self.datasetDriver.getSpeakerTextList(speakerTextIndex)
-        correspondingSpeakerNameList = self.datasetDriver.getCorrespondingSpeakerNameList()
-        for usedSpeakerIndex, speakerText in zip(usedSpeakerIndexList, speakerTextList):
-            playTextBrowserMarkdown += "#### **" + correspondingSpeakerNameList[usedSpeakerIndex] + "**: " + speakerText + "\n"
+
+        playTextBrowserMarkdown = self.getPlayTextBrowserMarkdown(speakerTextIndex)
         self.playTextBrowser.setMarkdown(playTextBrowserMarkdown)
+        self.playSpinBoxValueChanged.emit(speakerTextIndex)
         return playTextBrowserMarkdown
 
     def getPlayTextBrowserMarkdown(self, value: int) -> str:
@@ -193,6 +196,8 @@ class DatasetInterface(Ui_DatasetInterface, QWidget):
             self.signalComboBox.setCurrentIndex(0)
         else:
             self.datasetDriver.setDataModeCode(currentIndex)
+            # 切换模式会重置数据集内部的“扬声器-说话人”映射关系，这里同步刷新显示
+            self.displayValueDataset()
             self.stateChanged.emit()
 
     # playCard 槽函数

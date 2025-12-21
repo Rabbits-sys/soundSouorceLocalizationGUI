@@ -344,13 +344,14 @@ class DatasetDriver:
 
     def setDataModeCode(self, dataModeCode):
         """
-        设置数据模式（暂仅支持 0）。
+        设置数据模式。
 
         Parameters
         ----------
         dataModeCode : int
         """
         self._dataModeCode = dataModeCode
+        self._resetUsedSpeakerIndexListWithMode()
 
     def initSpeakerUsage(self, speakerNum):
         """
@@ -360,9 +361,37 @@ class DatasetDriver:
         ----------
         speakerNum : int
             启用数量（0-4）。
+
+        Notes
+        -----
+        - mode 0/1：初始化为不重复队列 ``[0,1,...,speakerNum-1]``；
+        - mode 2/3：初始化为全相同列表 ``[fixed]*speakerNum``，fixed 取当前固定 speaker（队尾/默认0）。
         """
+        # 保护与裁剪
+        if speakerNum is None:
+            speakerNum = 0
+        try:
+            speakerNum = int(speakerNum)
+        except Exception:
+            speakerNum = 0
+
+        if speakerNum < 0:
+            speakerNum = 0
+        maxSpeaker = len(self._correspondingSpeakerNameList)
+        if speakerNum > maxSpeaker:
+            speakerNum = maxSpeaker
+
         self._speakerUsedNum = speakerNum
-        self._usedSpeakerIndexList = list(range(speakerNum))
+
+        if self._speakerUsedNum == 0:
+            self._usedSpeakerIndexList = []
+            return
+
+        # 不同说话人：默认 0..N-1
+        self._usedSpeakerIndexList = list(range(self._speakerUsedNum))
+
+        # 若当前模式要求“相同说话人”，则改为全相同
+        self._resetUsedSpeakerIndexListWithMode()
 
     def addSpeakerUsage(self, speakerIndex):
         """
@@ -375,16 +404,138 @@ class DatasetDriver:
 
         Notes
         -----
-        - 若该索引未启用，则弹出队首并加入队尾；
-        - 若该索引已启用，则从队列移除并加入队尾（置为最新）。
+        - mode 0/1（不同说话人）：保持原有“队列”语义：点击的说话人会成为队尾（最新），
+          队列长度固定为 ``_speakerUsedNum``，并保持元素互不重复。
+        - mode 2/3（相同说话人）：所有通道绑定到同一个 speaker。点击任意 speaker 后，
+          ``_usedSpeakerIndexList`` 会被重置为 ``[speakerIndex] * _speakerUsedNum``。
         """
         if self._speakerUsedNum == 0:
             return
+
+        # 基本合法性保护（当前实现只支持 0..3）
+        if not isinstance(speakerIndex, int):
+            return
+        if speakerIndex < 0 or speakerIndex >= len(self._correspondingSpeakerNameList):
+            return
+
+        # 相同说话人模式：所有扬声器绑定同一个 speakerIndex
+        if self._dataModeCode in (2, 3):
+            self._usedSpeakerIndexList = [speakerIndex] * self._speakerUsedNum
+            return
+
+        # 不同说话人模式：保持原队列逻辑 + 唯一性
+        # 若列表异常（长度不对 / 有重复）先重置
+        if (
+            len(self._usedSpeakerIndexList) != self._speakerUsedNum
+            or len(set(self._usedSpeakerIndexList)) != self._speakerUsedNum
+        ):
+            self._usedSpeakerIndexList = list(range(self._speakerUsedNum))
+
         if speakerIndex not in self._usedSpeakerIndexList:
-            self._usedSpeakerIndexList.pop(0)
+            # 新 speaker：挤掉队首，加入队尾
+            if self._usedSpeakerIndexList:
+                self._usedSpeakerIndexList.pop(0)
         else:
+            # 已在队列：移动到队尾
             self._usedSpeakerIndexList.remove(speakerIndex)
+
         self._usedSpeakerIndexList.append(speakerIndex)
+
+    def _resetUsedSpeakerIndexListWithMode(self):
+        """根据当前 _dataModeCode 重置 _usedSpeakerIndexList，以适配不同的
+        “扬声器-说话人”映射关系。
+
+        约定
+        ----
+        - mode 0/1（不同说话人）：保持“队列”语义，长度为 _speakerUsedNum，元素互不重复；
+          若当前列表不满足条件则重置为 [0,1,...,_speakerUsedNum-1]。
+        - mode 2/3（相同说话人）：长度为 _speakerUsedNum，但所有元素都等于同一个 speakerIndex。
+          该 speakerIndex 取切换前队尾（最新选择）的 speaker；若为空则为 0。
+        """
+        if self._speakerUsedNum <= 0:
+            self._usedSpeakerIndexList = []
+            return
+
+        if self._dataModeCode in (2, 3):
+            fixed = self._getFixedSpeakerIndex()
+            self._usedSpeakerIndexList = [fixed] * self._speakerUsedNum
+            return
+
+        # mode 0/1：不同说话人
+        # 要求：长度正确且去重后数量也正确
+        if (
+            len(self._usedSpeakerIndexList) != self._speakerUsedNum
+            or len(set(self._usedSpeakerIndexList)) != self._speakerUsedNum
+        ):
+            self._usedSpeakerIndexList = list(range(self._speakerUsedNum))
+
+    def _getSampleIndex(self, dataIndex: int, usedSpeakerPos: int, speakerIndex: int) -> int:
+        """将(dataIndex, usedSpeakerPos, speakerIndex)映射到 self._corpus.samples 的索引。
+
+        dataModeCode 含义（均基于 CMU-ARCTIC 的 (tag, speaker) 组合样本）：
+        - 0: 扬声器-不同说话人不同语料
+             同一次播放中，不同扬声器对应不同 speaker 且不同 tag。
+        - 1: 扬声器-不同说话人相同语料
+             同一次播放中，不同扬声器对应不同 speaker 但相同 tag。
+        - 2: 扬声器-相同说话人不同语料
+             同一次播放中，所有扬声器用同一 speaker 但不同 tag。
+        - 3: 扬声器-相同说话人相同语料
+             同一次播放中，所有扬声器用同一 speaker 且相同 tag。
+
+        Notes
+        -----
+        CMUArcticCorpus.build_corpus 的样本组织为：
+        对每个 tag，按 speaker 顺序依次追加样本。因此：
+        sample_index = tagIndex * 4 + speaker_index
+        其中 speaker_index 是 ['bdl','slt','clb','rms'] 的索引。
+        """
+        if self._speakerUsedNum <= 0:
+            return 0
+
+        if self._dataModeCode == 0:
+            # 原有模式：tag 随 usedSpeakerPos 变化，speaker 随扬声器变化
+            tagIndex = dataIndex * self._speakerUsedNum + usedSpeakerPos
+            return tagIndex * 4 + speakerIndex
+
+        if self._dataModeCode == 1:
+            # 相同语料：tag 相同，speaker 随扬声器变化
+            tagIndex = dataIndex
+            return tagIndex * 4 + speakerIndex
+
+        if self._dataModeCode == 2:
+            # 相同说话人：speaker 固定为队列的最后一个（最新选择），tag 随扬声器变化
+            fixed_speaker = self._usedSpeakerIndexList[-1]
+            tagIndex = dataIndex * self._speakerUsedNum + usedSpeakerPos
+            return tagIndex * 4 + fixed_speaker
+
+        if self._dataModeCode == 3:
+            # 相同说话人相同语料：speaker 固定，tag 固定
+            fixed_speaker = self._usedSpeakerIndexList[-1]
+            tagIndex = dataIndex
+            return tagIndex * 4 + fixed_speaker
+
+        # 未知模式，回退到 0
+        tagIndex = dataIndex * self._speakerUsedNum + usedSpeakerPos
+        return tagIndex * 4 + speakerIndex
+
+    def _getTotalTagCount(self) -> int:
+        """当前语料库中可用的 tag 数量（每个 tag 对应4个 speaker 样本）。"""
+        return len(self._corpus.samples) // 4
+
+    def _normalize_data_index(self, dataIndex: int) -> int:
+        """将任意 dataIndex 规范化到合法范围，避免索引越界。"""
+        totalTags = self._getTotalTagCount()
+        if totalTags <= 0:
+            return 0
+        if dataIndex < 0:
+            dataIndex = 0
+        return dataIndex % totalTags
+
+    def _getFixedSpeakerIndex(self) -> int:
+        """相同说话人模式下使用的 speakerIndex（取队尾；空则为0）。"""
+        if not self._usedSpeakerIndexList:
+            return 0
+        return self._usedSpeakerIndexList[-1]
 
     def getSpeakerTextList(self, dataIndex):
         """
@@ -399,10 +550,11 @@ class DatasetDriver:
         -------
         list of str
         """
+        dataIndex = self._normalize_data_index(int(dataIndex))
         speakerTextList = []
-        if self._dataModeCode == 0:
-            for offset, speakerIndex in enumerate(self._usedSpeakerIndexList):
-                speakerTextList.append(self._corpus.samples[dataIndex * self._speakerUsedNum * 4 + offset * 4 + speakerIndex].meta.__dict__['text'])
+        for offset, speakerIndex in enumerate(self._usedSpeakerIndexList):
+            sampleIndex = self._getSampleIndex(dataIndex, offset, speakerIndex)
+            speakerTextList.append(self._corpus.samples[sampleIndex].meta.__dict__['text'])
 
         return speakerTextList
 
@@ -420,11 +572,10 @@ class DatasetDriver:
         list of np.ndarray
             每条为 ``shape=(N, 1)``。
         """
+        dataIndex = self._normalize_data_index(int(dataIndex))
         speakerDataList = []
-        if self._dataModeCode == 0:
-            for offset, speakerIndex in enumerate(self._usedSpeakerIndexList):
-                speakerDataList.append(
-                    self._corpus[dataIndex * self._speakerUsedNum * 4 + offset * 4 + speakerIndex].data[:, None])
+        for offset, speakerIndex in enumerate(self._usedSpeakerIndexList):
+            sampleIndex = self._getSampleIndex(dataIndex, offset, speakerIndex)
+            speakerDataList.append(self._corpus[sampleIndex].data[:, None])
 
         return speakerDataList
-

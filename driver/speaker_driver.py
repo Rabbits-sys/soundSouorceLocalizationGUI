@@ -267,7 +267,7 @@ class SpeakerDriver(object):
 
         deviceId, fuzzInfo = deviceInfo
 
-        if "USB Audio Device" in fuzzInfo["name"] and fuzzInfo["hostapi"] == 0 and fuzzInfo["max_output_channels"] > 0:
+        if fuzzInfo["hostapi"] == 0 and fuzzInfo["max_output_channels"] > 0:
             return deviceId, fuzzInfo["name"]
         return False
 
@@ -281,8 +281,7 @@ class SpeakerDriver(object):
         """
         sd._terminate()
         sd._initialize()
-        deviceList = list(filter(lambda x: x is not False, map(SpeakerDriver.filterUsbSoundcard, [indexInfo for indexInfo in enumerate(sd.query_devices())])))
-        # deviceList = [(index, name["name"]) for index, name in enumerate(sd.query_devices())]
+        deviceList = list(filter(lambda x: x is not False, map(self.filterUsbSoundcard, [indexInfo for indexInfo in enumerate(sd.query_devices())])))
         self._deviceItemList = [SpeakerDevice(deviceId, deviceName) for deviceId, deviceName in deviceList]
 
     def addDeviceUsage(self, deviceIndex):
